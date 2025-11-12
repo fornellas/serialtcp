@@ -19,6 +19,7 @@ tool (
 
 require (
 	github.com/fornellas/slogxt v1.1.1
+	github.com/kotaira/go-serial v1.0.3
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -29,6 +30,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
 	github.com/client9/misspell v0.3.4 // indirect
+	github.com/creack/goselect v0.1.3 // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fatih/gomodifytags v1.17.1-0.20250423142747-f3939df9aa3c // indirect
