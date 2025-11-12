@@ -1,0 +1,7 @@
+shell.go
+    toggle for supressing status query / message
+    improve Grbl.SendCommand to wait for the response
+        TBD how to avoid races with Grbl.Receive calls
+    track status of response message (ok / error)
+    Implement G-Code parser state
+    $# G-code Parameters state
