@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -149,7 +150,39 @@ var ServeCmd = &cobra.Command{
 
 		logger.Info("Listening on TCP", "address", address, "serial_port", portName)
 
-		return nil
+		// Accept and relay TCP connections one at a time
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				logger.Error("Failed to accept connection", "error", err)
+				return err
+			}
+			logger.Info("Client connected")
+
+			// Handle bidirectional relay between TCP connection and serial port
+			// We use two goroutines to copy in both directions
+			errChan := make(chan error, 2)
+
+			// Copy from serial port to TCP connection
+			go func() {
+				_, err := io.Copy(conn, port)
+				errChan <- err
+			}()
+
+			// Copy from TCP connection to serial port
+			go func() {
+				_, err := io.Copy(port, conn)
+				errChan <- err
+			}()
+
+			// Wait for either side to finish
+			<-errChan
+
+			// Close the connection to stop the other goroutine
+			conn.Close()
+
+			logger.Info("Client disconnected")
+		}
 	}),
 }
 
