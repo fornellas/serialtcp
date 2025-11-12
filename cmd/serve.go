@@ -1,12 +1,91 @@
 package main
 
 import (
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
 
 	"github.com/fornellas/slogxt/log"
 	"github.com/kotaira/go-serial"
 	"github.com/spf13/cobra"
 )
+
+// ParityValue implements pflag.Value for serial.Parity
+type ParityValue serial.Parity
+
+func (p *ParityValue) String() string {
+	switch serial.Parity(*p) {
+	case serial.NoParity:
+		return "no"
+	case serial.OddParity:
+		return "odd"
+	case serial.EvenParity:
+		return "even"
+	case serial.MarkParity:
+		return "mark"
+	case serial.SpaceParity:
+		return "space"
+	default:
+		return strconv.Itoa(int(*p))
+	}
+}
+
+func (p *ParityValue) Set(s string) error {
+	switch strings.ToLower(s) {
+	case "no":
+		*p = ParityValue(serial.NoParity)
+	case "odd":
+		*p = ParityValue(serial.OddParity)
+	case "even":
+		*p = ParityValue(serial.EvenParity)
+	case "mark":
+		*p = ParityValue(serial.MarkParity)
+	case "space":
+		*p = ParityValue(serial.SpaceParity)
+	default:
+		return fmt.Errorf("invalid parity value: %s", s)
+	}
+	return nil
+}
+
+func (p *ParityValue) Type() string {
+	return "parity"
+}
+
+// StopBitsValue implements pflag.Value for serial.StopBits
+type StopBitsValue serial.StopBits
+
+func (s *StopBitsValue) String() string {
+	switch serial.StopBits(*s) {
+	case serial.OneStopBit:
+		return "1"
+	case serial.OnePointFiveStopBits:
+		return "1.5"
+	case serial.TwoStopBits:
+		return "2"
+	default:
+		return strconv.Itoa(int(*s))
+	}
+}
+
+func (s *StopBitsValue) Set(str string) error {
+	switch strings.ToLower(str) {
+	case "1":
+		*s = StopBitsValue(serial.OneStopBit)
+	case "1.5":
+		*s = StopBitsValue(serial.OnePointFiveStopBits)
+	case "2":
+		*s = StopBitsValue(serial.TwoStopBits)
+	default:
+		return fmt.Errorf("invalid stop bits value: %s", str)
+	}
+	return nil
+}
+
+func (s *StopBitsValue) Type() string {
+	return "bits"
+}
 
 var portName string
 var portNameDefault = ""
@@ -20,17 +99,15 @@ var baudRateDefault = 115200
 var dataBits int
 var dataBitsDefault = 8
 
-var parity int
-var parityDefault = 0 // serial.NoParity
+var parity ParityValue
 
-var stopBits int
-var stopBitsDefault = 0 // serial.OneStopBit
+var stopBits StopBitsValue
 
-var rts bool
-var rtsDefault = false
+var disableRts bool
+var disableRtsDefault = false
 
-var dtr bool
-var dtrDefault = false
+var disableDtr bool
+var disableDtrDefault = false
 
 var ServeCmd = &cobra.Command{
 	Use:   "serve",
@@ -50,8 +127,8 @@ var ServeCmd = &cobra.Command{
 			Parity:   serial.Parity(parity),
 			StopBits: serial.StopBits(stopBits),
 			InitialStatusBits: &serial.ModemOutputBits{
-				RTS: rts,
-				DTR: dtr,
+				RTS: !disableRts,
+				DTR: !disableDtr,
 			},
 		}
 
@@ -80,10 +157,10 @@ func init() {
 	ServeCmd.PersistentFlags().StringVarP(&address, "address", "a", addressDefault, "TCP address to listen on (host:port)")
 	ServeCmd.PersistentFlags().IntVarP(&baudRate, "baud-rate", "b", baudRateDefault, "Serial port baud rate")
 	ServeCmd.PersistentFlags().IntVarP(&dataBits, "data-bits", "d", dataBitsDefault, "Serial port data bits (5, 6, 7, or 8)")
-	ServeCmd.PersistentFlags().IntVarP(&parity, "parity", "", parityDefault, "Serial port parity (0=NoParity, 1=OddParity, 2=EvenParity, 3=MarkParity, 4=SpaceParity)")
-	ServeCmd.PersistentFlags().IntVarP(&stopBits, "stop-bits", "", stopBitsDefault, "Serial port stop bits (0=OneStopBit, 1=OnePointFiveStopBits, 2=TwoStopBits)")
-	ServeCmd.PersistentFlags().BoolVarP(&rts, "rts", "", rtsDefault, "Serial port RTS (Request To Send) initial status")
-	ServeCmd.PersistentFlags().BoolVarP(&dtr, "dtr", "", dtrDefault, "Serial port DTR (Data Terminal Ready) initial status")
+	ServeCmd.PersistentFlags().VarP(&parity, "parity", "", "Serial port parity (no, odd, even, mark or space)")
+	ServeCmd.PersistentFlags().VarP(&stopBits, "stop-bits", "", "Serial port stop bits (1, 1.5, or 2)")
+	ServeCmd.PersistentFlags().BoolVarP(&disableRts, "disable-rts", "", disableRtsDefault, "Serial port RTS (Request To Send)")
+	ServeCmd.PersistentFlags().BoolVarP(&disableDtr, "disable-dtr", "", disableDtrDefault, "Serial port DTR (Data Terminal Ready)")
 
 	RootCmd.AddCommand(ServeCmd)
 }
