@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -137,14 +138,14 @@ var ServeCmd = &cobra.Command{
 			logger.Error("Failed to open serial port", "error", err)
 			return err
 		}
-		defer port.Close()
+		defer func() { errors.Join(err, port.Close()) }()
 
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
 			logger.Error("Failed to listen", "error", err)
 			return err
 		}
-		defer listener.Close()
+		defer func() { errors.Join(err, listener.Close()) }()
 
 		logger.Info("Listening on TCP", "address", address, "serial_port", portName)
 
