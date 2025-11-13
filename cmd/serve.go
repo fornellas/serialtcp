@@ -118,7 +118,7 @@ func handleConnection(ctx context.Context, conn net.Conn, port serial.Port) (err
 	logger.Info("Setting TCP no delay")
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		if err := tcpConn.SetNoDelay(true); err != nil {
-			return fmt.Errorf("Failed to set TCP no delay: %w", err)
+			return fmt.Errorf("failed to set TCP no delay: %w", err)
 		}
 	}
 
