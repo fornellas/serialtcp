@@ -216,6 +216,9 @@ var ServeCmd = &cobra.Command{
 
 func init() {
 	ServeCmd.PersistentFlags().StringVarP(&portName, "port-name", "p", portNameDefault, "Port name")
+	if err := ServeCmd.MarkFlagRequired("port-name"); err != nil {
+		panic(err)
+	}
 	ServeCmd.PersistentFlags().StringVarP(&address, "address", "a", addressDefault, "TCP address to listen on (host:port)")
 	ServeCmd.PersistentFlags().IntVarP(&baudRate, "baud-rate", "b", baudRateDefault, "Serial port baud rate")
 	ServeCmd.PersistentFlags().IntVarP(&dataBits, "data-bits", "d", dataBitsDefault, "Serial port data bits (5, 6, 7, or 8)")
