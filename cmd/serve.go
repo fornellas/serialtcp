@@ -180,16 +180,14 @@ var ServeCmd = &cobra.Command{
 		logger.Info("Opening serial port")
 		port, err := serial.Open(portName, mode)
 		if err != nil {
-			logger.Error("Failed to open serial port", "error", err)
-			return err
+			return fmt.Errorf("failed to open: %s: %w", portName, err)
 		}
 		defer func() { errors.Join(err, port.Close()) }()
 
 		logger.Info("Listening")
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
-			logger.Error("Failed to listen", "error", err)
-			return err
+			return fmt.Errorf("failed to listen: %s: %w", address, err)
 		}
 		defer func() { errors.Join(err, listener.Close()) }()
 
