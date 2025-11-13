@@ -148,6 +148,7 @@ func handleConnection(ctx context.Context, conn net.Conn, port serial.Port) (err
 var ServeCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start a TCP server connected to a serial port.",
+	Long:  "Opens serial port and a TCP server, and pipe communication between both. There's NO security implemented, this can only be used in secure networks at your own risk.",
 	Args:  cobra.ExactArgs(1),
 	Run: GetRunFn(func(cmd *cobra.Command, args []string) (err error) {
 
