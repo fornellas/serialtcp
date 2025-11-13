@@ -149,7 +149,7 @@ var ServeCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start a TCP server connected to a serial port.",
 	Long:  "Opens serial port and a TCP server, and pipe communication between both. There's NO security implemented, this can only be used in secure networks at your own risk.",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.NoArgs,
 	Run: GetRunFn(func(cmd *cobra.Command, args []string) (err error) {
 
 		ctx, logger := log.MustWithAttrs(
