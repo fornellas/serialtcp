@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -111,6 +112,39 @@ var disableRtsDefault = false
 var disableDtr bool
 var disableDtrDefault = false
 
+func handleConnection(ctx context.Context, conn net.Conn, port serial.Port) (err error) {
+	logger := log.MustLogger(ctx)
+
+	logger.Info("Setting TCP no delay")
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		if err := tcpConn.SetNoDelay(true); err != nil {
+			return fmt.Errorf("Failed to set TCP no delay: %w", err)
+		}
+	}
+
+	errCh := make(chan error, 2)
+
+	logger.Info("Copying I/O")
+	go func() {
+		_, err := io.Copy(conn, port)
+		errCh <- err
+	}()
+
+	go func() {
+		_, err := io.Copy(port, conn)
+		errCh <- err
+	}()
+
+	err = <-errCh
+	err = errors.Join(err, <-errCh)
+
+	err = errors.Join(err, conn.Close())
+
+	logger.Info("Connection closed")
+
+	return
+}
+
 var ServeCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start a TCP server connected to a serial port.",
@@ -119,6 +153,14 @@ var ServeCmd = &cobra.Command{
 
 		ctx, logger := log.MustWithAttrs(
 			cmd.Context(),
+			"port-name", portName,
+			"address", address,
+			"baud-rate", baudRate,
+			"data-bits", dataBits,
+			"parity", parity,
+			"stop-bits", stopBits,
+			"disable-rts", disableRts,
+			"disable-dtr", disableDtr,
 		)
 		cmd.SetContext(ctx)
 		logger.Info("Running")
@@ -134,6 +176,7 @@ var ServeCmd = &cobra.Command{
 			},
 		}
 
+		logger.Info("Opening serial port")
 		port, err := serial.Open(portName, mode)
 		if err != nil {
 			logger.Error("Failed to open serial port", "error", err)
@@ -141,6 +184,7 @@ var ServeCmd = &cobra.Command{
 		}
 		defer func() { errors.Join(err, port.Close()) }()
 
+		logger.Info("Listening")
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
 			logger.Error("Failed to listen", "error", err)
@@ -148,40 +192,23 @@ var ServeCmd = &cobra.Command{
 		}
 		defer func() { errors.Join(err, listener.Close()) }()
 
-		logger.Info("Listening on TCP", "address", address, "serial_port", portName)
-
-		// Accept and relay TCP connections one at a time
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
 				logger.Error("Failed to accept connection", "error", err)
-				return err
+				continue
 			}
-			logger.Info("Client connected")
+			ctx, logger := log.MustWithGroupAttrs(
+				ctx,
+				"Connection",
+				"LocalAddr", conn.LocalAddr(),
+				"RemoteAddr", conn.RemoteAddr(),
+			)
+			logger.Info("Accepted")
 
-			// Handle bidirectional relay between TCP connection and serial port
-			// We use two goroutines to copy in both directions
-			errChan := make(chan error, 2)
-
-			// Copy from serial port to TCP connection
-			go func() {
-				_, err := io.Copy(conn, port)
-				errChan <- err
-			}()
-
-			// Copy from TCP connection to serial port
-			go func() {
-				_, err := io.Copy(port, conn)
-				errChan <- err
-			}()
-
-			// Wait for either side to finish
-			<-errChan
-
-			// Close the connection to stop the other goroutine
-			conn.Close()
-
-			logger.Info("Client disconnected")
+			if err := handleConnection(ctx, conn, port); err != nil {
+				logger.Error("Failed to handle connection", "error", err)
+			}
 		}
 	}),
 }
