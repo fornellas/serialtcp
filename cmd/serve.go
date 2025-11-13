@@ -112,7 +112,7 @@ var disableRtsDefault = false
 var disableDtr bool
 var disableDtrDefault = false
 
-func handleConnection(ctx context.Context, conn net.Conn, port serial.Port) (err error) {
+func handleConnection(ctx context.Context, conn net.Conn, mode *serial.Mode) (err error) {
 	logger := log.MustLogger(ctx)
 
 	logger.Info("Setting TCP no delay")
@@ -121,6 +121,13 @@ func handleConnection(ctx context.Context, conn net.Conn, port serial.Port) (err
 			return fmt.Errorf("failed to set TCP no delay: %w", err)
 		}
 	}
+
+	logger.Info("Opening serial port")
+	port, err := serial.Open(portName, mode)
+	if err != nil {
+		return fmt.Errorf("failed to open: %s: %w", portName, err)
+	}
+	defer func() { errors.Join(err, port.Close()) }()
 
 	errCh := make(chan error, 2)
 
@@ -175,13 +182,6 @@ var ServeCmd = &cobra.Command{
 			},
 		}
 
-		logger.Info("Opening serial port")
-		port, err := serial.Open(portName, mode)
-		if err != nil {
-			return fmt.Errorf("failed to open: %s: %w", portName, err)
-		}
-		defer func() { errors.Join(err, port.Close()) }()
-
 		logger.Info("Listening")
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
@@ -203,7 +203,7 @@ var ServeCmd = &cobra.Command{
 			)
 			logger.Info("Accepted")
 
-			if err := handleConnection(ctx, conn, port); err != nil {
+			if err := handleConnection(ctx, conn, mode); err != nil {
 				logger.Error("Failed to handle connection", "error", err)
 			}
 		}
