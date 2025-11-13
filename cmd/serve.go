@@ -127,7 +127,6 @@ func handleConnection(ctx context.Context, conn net.Conn, mode *serial.Mode) (er
 	if err != nil {
 		return fmt.Errorf("failed to open: %s: %w", portName, err)
 	}
-	defer func() { errors.Join(err, port.Close()) }()
 
 	errCh := make(chan error, 2)
 
@@ -145,6 +144,9 @@ func handleConnection(ctx context.Context, conn net.Conn, mode *serial.Mode) (er
 	err = <-errCh
 	logger.Info("Closing connection")
 	err = errors.Join(err, conn.Close())
+	logger.Info("Closing port")
+	err = errors.Join(err, port.Close())
+	logger.Info("Waiting for copy routine to return")
 	err = errors.Join(err, <-errCh)
 
 	return
@@ -190,6 +192,7 @@ var ServeCmd = &cobra.Command{
 		defer func() { errors.Join(err, listener.Close()) }()
 
 		for {
+			logger.Info("Accepting connection")
 			conn, err := listener.Accept()
 			if err != nil {
 				logger.Error("Failed to accept connection", "error", err)
