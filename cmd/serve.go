@@ -136,11 +136,9 @@ func handleConnection(ctx context.Context, conn net.Conn, port serial.Port) (err
 	}()
 
 	err = <-errCh
-	err = errors.Join(err, <-errCh)
-
+	logger.Info("Closing connection")
 	err = errors.Join(err, conn.Close())
-
-	logger.Info("Connection closed")
+	err = errors.Join(err, <-errCh)
 
 	return
 }
